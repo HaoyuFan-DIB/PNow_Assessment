@@ -10,7 +10,9 @@ The data is the star catalog from LAMOST data release 8. I will be using the `ma
 - The raw data has ~1.3 M rows, and the filtered data has ~0.34 M rows. That leaves ~250K or training and 85K for testing (25% of testing data).
 - The typical/median error of `teff` is 90K, or 0.023 after normalization.
 - The filtering effort include: `SNR` of all band being positive and max(`SNR`) > 20; target being a star; `teff` between 3k - 7k, `logg` between 1.0 - 5.0, `feh` between -2.0 - 0.5.
-- The `magnitude type` (i.e. `mag1` - `mag7`) being *gribvjh*
+- The `magnitude type` (i.e. `mag1` - `mag7`) being *g-r-i-b-v-j-h*
+
+
 
 * ANN Model
 Before jumping to LGBM, I worked with some ANN models for benchmark purpose. This is similar to my previous project expect I am just predicting `teff` this time.
