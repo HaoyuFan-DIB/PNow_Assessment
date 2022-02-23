@@ -1,113 +1,140 @@
-import numpy as np
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from astropy.io import fits
 import os
-from Path import DataPath, ImgPath, ModelPath
+from Utils import DataPath, ImgPath, teff_range, logg_range, feh_range
+
+###################
+# Load data
+###################
+csv_filename = os.path.join(DataPath, "dr8_v1.0_stellar_LRS.csv")
+df = pd.read_csv(csv_filename, delimiter="|")
+print(df.columns)
+print("Raw data have %i rows" % len(df))
+# Columns of concern (QA, X and Y)
+# snru/g/r/i/z: signal to noise ratio, for general data quality
+# class: type of target, will focus on stars
+# mag1 to mag7: brightness of different colors, input Xs of model
+# magtype: meta data for mag1 - mag7, what is the color being measured?
+# teff, logg, feh: key parameter of star, will focus on teff, their
+#                  errors are *_err, can be used as weights
 
 
-# Load data from fits file to pandas data frame
-data_fits = fits.open('/Users/haoyufan/PNow_Assessment/Data/sage_panstarrs_dered.fits')
-print(data_fits[1].data.names)
-# Columns of interest:
-# RA/DEJ2000: coordinate of target, not related to the project;
-# U/V/G/R/IMAG: brightness of UVGRI bands, similar to color;
-# TEFF/LOGG/FEH: the major parameters of a star. Focus on TEFF (effective temperature);
-# *ERR/E*: The errors of the above parameters, may be used as weights but will be dropped for now;
+###################
+# Filtering
+###################
+# Filtering:
+# 1. class = star
+# 2. valid snru/g/r/i/z (snr* > 0)
+# 3. max(snr) > 20
+# 4. 3000 < TEFF < 7000, 1 < logg < 5, -2 < FeH < 0.5, sweet point of physical model
+# 4. magtype = gribvjh, also change column names, e.g. mag1 --> mag_g
+# 5. remove outlier in mag1 - mag7
+
+df = df.loc[df["class"] == "STAR"]
+
+SNR_labels = ["snr" + item for item in ["u", "g", "r", "i", "z"]]
+df["SNR"] = df[SNR_labels].max(axis=1)
+df = df.loc[df["SNR"] > 20]
+for band in SNR_labels:
+    df = df.loc[df[band] > 0]
 
 
-# Fits file use Big-endian buffer so loading the data into a data frame takes more effort
-X_namelist = ['UMAG', 'VMAG', 'GMAG', 'RMAG', 'IMAG']
-Y_namelist = ['TEFF', 'LOGG', 'FEH']
-
-data_all = np.asarray([data_fits[1].data.field(n) for n in X_namelist + Y_namelist]).transpose()
-data_all.byteswap().newbyteorder()
-df = pd.DataFrame(data=data_all, columns=X_namelist + Y_namelist)
-
-
-# The stellar parameters are from physical models and are more reliable within certain range
-# Further trim the table, drop possible duplicate, resort index
-idx = (df["TEFF"] > 3000) & (df["TEFF"] < 7000) & \
-      (df["LOGG"] > 1) & (df["LOGG"] < 5) & \
-      (df["FEH"] > -2) & (df["FEH"] < 0.5)
+idx = (df["teff"] > teff_range[0]) & (df["teff"] < teff_range[1]) & \
+      (df["logg"] > logg_range[0]) & (df["logg"] < logg_range[1]) & \
+      (df["feh"] > feh_range[0]) & (df["feh"] < feh_range[1])
 df = df.loc[idx]
 
-df.drop(columns=["LOGG", "FEH"], inplace=True)
-df.drop_duplicates(inplace=True)
-df.reset_index(drop=True, inplace=True)
+df = df.loc[df["magtype"] == "gribvjh"]
 
-# Some EDA effort
-# Basic print-out
+mag_label_old = ["mag%i" % item for item in np.arange(7) + 1]
+mag_label_new = ["mag_" + item for item in "gribvjh"]
+rename_dict = {}
+for key, value in zip(mag_label_old, mag_label_new):
+    rename_dict[key] = value
+df.rename(columns=rename_dict, inplace=True)
+print(df[mag_label_new].describe().transpose())
+df[mag_label_new].boxplot()
+plt.show()
+
+# Max of mag_b, j, h is 20.0, looks like some rounding up
+# Also mag_v has an outlier at ~17.8, will use it for cutoff of all magx
+mag_cutoff = df["mag_v"].max()
+for mag in mag_label_new:
+    df = df.loc[df[mag] < mag_cutoff]
+
+par_names = ["teff", "logg", "feh"]
+par_err_names = [item+"_err" for item in par_names]
+df.drop_duplicates(inplace=True)
+df = df[SNR_labels + mag_label_new + par_names + par_err_names]
+df.reset_index(drop=True, inplace=True)
+print("Trimmed table has %i rows" % (len(df)))
+
+
+###################
+# EDA efforts
+###################
 print(df.dtypes)
 print(df.describe().transpose())
-# Good dtype, no missing values, ~115K rows
-# Numbers making sense, no obvious outliers
+# Things that I care about:
+# 1. hist for snrx, magx, and the three parameters
+# 2. correlations between the input Xs and Y to predict (teff for now)
 
+par_groups = {"SNR": SNR_labels,
+              "mag": mag_label_new,
+              "pars": par_names}
+for key in par_groups:
+    n_rows = int(np.ceil(len(par_groups[key]) / 3))
+    fig = plt.figure(figsize=[9, n_rows*2 + 1], dpi=200)
+    for i, item in enumerate(par_groups[key]):
+        ax = fig.add_subplot(n_rows, 3, i+1)
+        ax.hist(df[item])
+        ax.set_ylabel(item)
+    plt.tight_layout()
+    plt.savefig(os.path.join(ImgPath, key.join(["Hist_", ".png"])))
+    plt.close()
 
-# Hist of columns
-fig = plt.figure(figsize=[10, 5], dpi=200)
-for i, col in enumerate(df.columns):
-      ax = fig.add_subplot(3, 2, i+1)
-      ax.hist(df[col])
-      ax.set_ylabel(col)
-plt.tight_layout()
-plt.savefig(os.path.join(ImgPath, "Hist_RawUVGRI.png"))
-plt.close()
-# All X features are tightly distributed within a similar range
-
-
-# Correlation among columns
-plt.matshow(df.corr())
-plt.xticks(ticks=np.arange(6), labels=df.columns)
-plt.yticks(ticks=np.arange(6), labels=df.columns)
+plt.matshow(df[mag_label_new + ["teff"]].corr())
+plt.xticks(ticks=np.arange(len(mag_label_new) + 1), labels=mag_label_new + ["teff"])
+plt.yticks(ticks=np.arange(len(mag_label_new) + 1), labels=mag_label_new + ["teff"])
 plt.colorbar()
-plt.savefig(os.path.join(ImgPath, "Corr_RawUVGRI.png"))
+plt.savefig(os.path.join(ImgPath, "Corr_Raw.png"))
 plt.close()
-# X_features are tightly correlated as expected. If a star is bright, all band will be bright.
-# We are more interested in the difference between bands brightness
+
+###################
+# Feature Engineering
+###################
+# There are strong correlations between magx, like bulbs having different wattage but the same color.
+# color difference (delta bands) is usually used in physical models to address the overall growth.
+# It is also better to normalize the stellar parameters.
+# Lastly, I want to know the typical error of Teff, to compare with lgbm method
 
 
-# Getting Delta brightness
-band_all = ["U", "V", "G", "R", "I"]
 d_band_namelist = []
-for i in range(len(band_all)):
+for i in range(len(mag_label_new)):
     for j in range(i):
-          band1, band2 = band_all[i], band_all[j]
-          df["-".join([band1, band2])] = df[band1 + "MAG"] - df[band2 + "MAG"]
-          d_band_namelist.append("-".join([band1, band2]))
+        band1, band2 = mag_label_new[i], mag_label_new[j]
+        df["-".join([band1[-1], band2[-1]])] = df[band1] - df[band2]
+        d_band_namelist.append("-".join([band1[-1], band2[-1]]))
 
-print(d_band_namelist)
-
-# Redo Corr and Hist plots for d_bands
-fig = plt.figure(figsize=[10, 5], dpi=200)
-for i, col in enumerate(d_band_namelist):
-      ax = fig.add_subplot(3, 4, i+1)
-      ax.hist(df[col])
-      ax.set_ylabel(col)
-plt.tight_layout()
-plt.savefig(os.path.join(ImgPath, "Hist_DeltaUVGRI.png"))
-plt.close()
-
-# Correlation among columns
-plt.matshow(df[d_band_namelist + ["TEFF"]].corr())
-plt.xticks(ticks=np.arange(11), labels=d_band_namelist + ["TEFF"])
-plt.yticks(ticks=np.arange(11), labels=d_band_namelist + ["TEFF"])
+plt.matshow(df[d_band_namelist + ["teff"]].corr())
+plt.xticks(ticks=np.arange(len(d_band_namelist) + 1), labels=d_band_namelist + ["teff"], rotation=-75)
+plt.yticks(ticks=np.arange(len(d_band_namelist) + 1), labels=d_band_namelist + ["teff"])
 plt.colorbar()
-plt.savefig(os.path.join(ImgPath, "Corr_DeltaUVGRI.png"))
+plt.savefig(os.path.join(ImgPath, "Corr_d_Band.png"))
 plt.close()
 
-
-# Also, normalize Temperature. This is important for NN but not sure for lightGBM
-# Note I trimmed TEFF to between 3000 and 7000
-df["TEFF_Norm"] = (df["TEFF"] - 3000) / (7000 - 3000)
-
-# Split data into training and testing set, save to csv file
-train_df, test_df = train_test_split(df, test_size=0.2)
-with open(os.path.join(DataPath, "TrainingData.csv"), "w") as f:
-      f.write(train_df.to_csv(index=False))
-
-with open(os.path.join(DataPath, "TestingData.csv"), "w") as f:
-      f.write(test_df.to_csv(index=False))
+df["teff_norm"] = (df["teff"] - teff_range[0]) / (teff_range[1] - teff_range[0])
+df["teff_norm_err"] = df["teff_err"] / (teff_range[1] - teff_range[0])
+df["logg_norm"] = (df["logg"] - logg_range[0]) / (logg_range[1] - logg_range[0])
+df["logg_norm_err"] = df["logg_err"] / (logg_range[1] - logg_range[0])
+df["feh_norm"] = (df["feh"] - feh_range[0]) / (feh_range[1] - feh_range[0])
+df["feh_norm_err"] = df["feh_err"] / (feh_range[1] - feh_range[0])
 
 
+print("Typical error of Teff is %.2f, or %.2f%%" %
+      (df["teff_err"].median(), np.nanmedian(df["teff_err"].to_numpy() / df["teff"].to_numpy()) * 100))
+
+# save table
+with open(os.path.join(DataPath, "TrimmedData.csv"), "w") as f:
+    f.write(df.to_csv(index=False))
