@@ -94,8 +94,6 @@ def my_lr(epoch, lr):
 if __name__ == '__main__':
     batch_size = 1024
     epochs = 1000
-    n_filter = 128
-    n_layer_Group = 4
     activation = 'relu'
     final_activation = 'linear'
 
@@ -105,20 +103,30 @@ if __name__ == '__main__':
     x_test = df_train[X_columns].to_numpy()
     y_test = df_train[Y_column].to_numpy()
 
-    model = get_model_dense(n_filter, n_layer_Group, activation, final_activation)
-    # model = load_model('./best_model_lamost.h5')
-    model.summary()
+    for n_filter in [64, 128, 256]:
+        for n_layer_Group in [2, 4]:
+            if n_filter == 256 and n_layer_Group == 4:
+                pass
 
-    model.compile(Adam(1e-3, amsgrad=True), ['mse'])
-    model.fit(x_train, y_train,
-              validation_data=[x_test, y_test],
-              batch_size=batch_size, epochs=epochs, verbose=1,
-              callbacks=[MyMetrics([x_test, y_test]),
-                         LearningRateScheduler(my_lr, verbose=1)],
-              initial_epoch=0)
+            model = get_model_dense(n_filter, n_layer_Group, activation, final_activation)
+            # model = load_model('./best_model_lamost.h5')
+            model.summary()
 
-    os.rename(os.path.join(ModelPath, "LossVSTime.csv"),
-              os.path.join(ModelPath, "Loss_%iFilter_%iLayers.csv" % (n_filter, n_layer_Group)))
+            model.compile(Adam(1e-3, amsgrad=True), ['mse'])
+            model.fit(x_train, y_train,
+                      validation_data=[x_test, y_test],
+                      batch_size=batch_size, epochs=epochs, verbose=1,
+                      callbacks=[MyMetrics([x_test, y_test]),
+                                 LearningRateScheduler(my_lr, verbose=1)],
+                      initial_epoch=0)
+
+            os.rename(os.path.join(ModelPath, "LossVSTime.csv"),
+                      os.path.join(ModelPath, "Loss_%iFilter_%iLayers.csv" % (n_filter, n_layer_Group)))
+
+
+
+
+
 
 
 

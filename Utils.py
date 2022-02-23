@@ -41,8 +41,10 @@ def load_csv_data(test_size=0.25, d_band=True, norm_T=True):
     else:
         Y_column = ["teff"]
 
-    csv_filename = os.path.join(DataPath, "TrimmedData.csv")
-    df = pd.read_csv(csv_filename, delimiter=",")
+    csv_filename = os.path.join(DataPath, "TrimmedData_pt1.csv")
+    df1 = pd.read_csv(csv_filename, delimiter=",")
+    df2 = pd.read_csv(csv_filename.replace("pt1", "pt2"), delimiter=",")
+    df = df1.append(df2).reset_index(drop=True, inplace=False)
     df_train, df_test = train_test_split(df, test_size=test_size)
 
     return df_train[X_columns + Y_column], df_test[X_columns + Y_column], X_columns, Y_column
