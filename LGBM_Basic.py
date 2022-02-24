@@ -14,22 +14,23 @@ lgb_test = lgb.Dataset(df_test[X_columns], df_test[Y_column], reference=lgb_trai
 
 # Define Parameter
 params = {
-    'boosting_type': '',
+    #'boosting_type': 'rf',
     'objective': 'regression',
     #'metric': {'l2', 'l1'},
     'num_leaves': 63,
     'learning_rate': 0.1,
-    'feature_fraction': 0.9,
-    'bagging_fraction': 0.8,
-    'bagging_freq': 5,
-    'verbose': 0
+    #'feature_fraction': 0.9,
+    #'bagging_fraction': 0.8,
+    #'bagging_freq': 5,
+    'verbose': 0,
+    'num_iterations': 1000
 }
 
 # Train model
 start_time = time.time()
 gbm = lgb.train(params,
                 lgb_train,
-                valid_sets=lgb_test
+                valid_sets=lgb_test,
                 )
 duration = time.time() - start_time
 

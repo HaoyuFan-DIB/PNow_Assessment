@@ -26,9 +26,5 @@ Using LGBM following the documentation is not hard, but there are many parameter
 - Over fitting is not a problem in my data.
 - Tried to play with `num_of_leaf`, 'learn_rate`, `boosting_type`, and the default value is the best?
 - Feature engineering is successful. RMSE is smaller when use `d_mag`, compared to use the raw `mags`.
-
-
-
-
-
-I will continuously updating this repo as the project goes and finger crossed!
+- Basic LGBM got RMSE = 0.0339 from 1000 iteration, using 6.75s; Distributed LGBM got RMSE=0.0292 using 8.71s??
+- And trouble using eval_set in DaskLGBMRegressor...
