@@ -12,13 +12,21 @@ The data is the star catalog from LAMOST data release 8. I will be using the `ma
 - The filtering effort include: `SNR` of all band being positive and max(`SNR`) > 20; target being a star; `teff` between 3k - 7k, `logg` between 1.0 - 5.0, `feh` between -2.0 - 0.5.
 - The `magnitude type` (i.e. `mag1` - `mag7`) being *g-r-i-b-v-j-h*.
 
-### About the Data
-
-###ANN Model
+### ANN Models
 Before jumping to LGBM, I worked with some ANN models for benchmark purpose. This is similar to my previous project expect I am just predicting `teff` this time.
 - The time cost of training ANN models greatly depends on the total epochs. Most of the improvements happen within the first few epochs.
 - I find 500 - 1000 epochs to be quite sufficient, and each epoch takes about 5 - 7 sec, so the training takes 0.5 - 2.0 hr.
 - Depending on the complexity of the ANN model, RMSE can be ~0.026, which is close to the error of data, and better than LGBM (see below).
+
+### LGBM
+Using LGBM following the documentation is not hard, but there are many parameters to tune with. Some key points I found include:
+- LGBM is faster than ANN, but the result is less accurate, where the RMSE is ~ 0.035.
+- The fast-training process usually takes less than 1s, compared to ~30s in ANN.
+- There are many parameters to tune, some deals with overfitting while the others balance efficiency and effectiveness. 
+- Over fitting is not a problem in my data.
+- Tried to play with `num_of_leaf`, 'learn_rate`, `boosting_type`, and the default value is the best?
+- Feature engineering is successful. RMSE is smaller when use `d_mag`, compared to use the raw `mags`.
+
 
 
 
