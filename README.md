@@ -24,7 +24,7 @@ Using LGBM following the documentation is not hard, but there are many parameter
 - The fast-training process usually takes less than 1s, compared to ~30s in ANN.
 - There are many parameters to tune, some deals with overfitting while the others balance efficiency and effectiveness. 
 - Over fitting is not a problem in my data.
-- Tried to play with `num_of_leaf`, 'learn_rate`, `boosting_type`, and the default value is the best?
+- Tried to play with `num_of_leaf`, `learn_rate`, `boosting_type`, and the default value is the best?
 - Feature engineering is successful. RMSE is smaller when use `d_mag`, compared to use the raw `mags`.
-- Basic LGBM got RMSE = 0.0339 from 1000 iteration, using 6.75s; Distributed LGBM got RMSE=0.0292 using 8.71s??
+- Basic LGBM got RMSE = 0.0339 from 1000 iteration, using 6.75s; Distributed LGBM got RMSE = 0.0392 using 8.71s??
 - And trouble using eval_set in DaskLGBMRegressor...

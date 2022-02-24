@@ -93,7 +93,7 @@ def my_lr(epoch, lr):
 # basic parameters
 if __name__ == '__main__':
     batch_size = 1024
-    epochs = 1000
+    epochs = 500
     activation = 'relu'
     final_activation = 'linear'
 
@@ -105,9 +105,6 @@ if __name__ == '__main__':
 
     for n_filter in [64, 128, 256]:
         for n_layer_Group in [2, 4]:
-            if n_filter == 256 and n_layer_Group == 4:
-                pass
-
             model = get_model_dense(n_filter, n_layer_Group, activation, final_activation)
             # model = load_model('./best_model_lamost.h5')
             model.summary()
@@ -122,6 +119,8 @@ if __name__ == '__main__':
 
             os.rename(os.path.join(ModelPath, "LossVSTime.csv"),
                       os.path.join(ModelPath, "Loss_%iFilter_%iLayers.csv" % (n_filter, n_layer_Group)))
+
+
 
 
 
