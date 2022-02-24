@@ -12,6 +12,8 @@ The data is the star catalog from LAMOST data release 8. I will be using the `ma
 - The filtering effort include: `SNR` of all band being positive and max(`SNR`) > 20; target being a star; `teff` between 3k - 7k, `logg` between 1.0 - 5.0, `feh` between -2.0 - 0.5.
 - The `magnitude type` (i.e. `mag1` - `mag7`) being *g-r-i-b-v-j-h*
 
+  
+
 
 
 * ANN Model
